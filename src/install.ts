@@ -59,12 +59,12 @@ function platform(tool: string, names: Record<string, string>): string {
  * We're fetching an executable over the network and then running it, so it's
  * worth knowing that what arrived is what was published.
  */
-export async function verify(
+export function verify(
   archivePath: string,
+  listPath: string,
   checksums: string,
   asset: string
-): Promise<void> {
-  const listPath = await tc.downloadTool(checksums);
+): void {
   const lines = fs.readFileSync(listPath, 'utf8').split('\n');
 
   // sha256sum's own format: the digest, whitespace, then the file name.
@@ -86,6 +86,23 @@ export async function verify(
   }
 
   core.debug(`Verified ${asset} against ${checksums}.`);
+}
+
+/**
+ * `fetchVerified` downloads an archive alongside its checksums, then checks
+ * one against the other.
+ */
+async function fetchVerified(
+  url: string,
+  checksums: string,
+  asset: string
+): Promise<string> {
+  const [archivePath, listPath] = await Promise.all([
+    tc.downloadTool(url),
+    tc.downloadTool(checksums)
+  ]);
+  verify(archivePath, listPath, checksums, asset);
+  return archivePath;
 }
 
 /**
@@ -161,9 +178,8 @@ export async function installLint(version: string): Promise<string> {
   const name = `vale_${version}_${platform('Vale', valePlatforms)}.${ext}`;
 
   const url = `${releases}/v${version}/${name}`;
-  const archivePath = await tc.downloadTool(url);
-  await verify(
-    archivePath,
+  const archivePath = await fetchVerified(
+    url,
     `${releases}/v${version}/vale_${version}_checksums.txt`,
     name
   );
@@ -200,10 +216,9 @@ export async function installReviewDog(
     url = `${dl}/${name}`;
   }
 
-  const archivePath = await tc.downloadTool(url as string);
-  if (!custom) {
-    await verify(archivePath, `${dl}/checksums.txt`, name);
-  }
+  const archivePath = custom
+    ? await tc.downloadTool(url as string)
+    : await fetchVerified(url as string, `${dl}/checksums.txt`, name);
 
   const extracted = await unpack(archivePath, 'reviewdog', 'tar.gz');
   const dir = custom

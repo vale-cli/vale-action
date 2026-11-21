@@ -123,25 +123,30 @@ function flagsFromInputs(): string[] {
  * Parse our user input and set up our Vale environment.
  */
 export async function get(tok: string, dir: string): Promise<Input> {
-  const localVale = await installLint(core.getInput('version'));
-  const localReviewDog = await installReviewDog(
-    core.getInput('reviewdog_version'),
-    core.getInput('reviewdog_url')
-  );
+  // The two downloads don't depend on each other.
+  const [localVale, localReviewDog] = await Promise.all([
+    installLint(core.getInput('version')),
+    installReviewDog(
+      core.getInput('reviewdog_version'),
+      core.getInput('reviewdog_url')
+    )
+  ]);
 
   // `vale_flags` comes last so that it still has the final say on anything
   // it names twice.
   const flags = [...flagsFromInputs(), ...parse(core.getInput('vale_flags'))];
 
-  let version = '';
-  await exec.exec(localVale, ['-v'], {
-    silent: true,
-    listeners: {
-      stdout: (buffer: Buffer) => (version = buffer.toString().trim())
-    }
-  });
-  version = version.split(' ').slice(-1)[0];
-  logIfDebug(`Using Vale ${version}`);
+  // The version is only ever logged, so only ask for it when it will be.
+  if (core.getInput('debug') == 'true') {
+    let version = '';
+    await exec.exec(localVale, ['-v'], {
+      silent: true,
+      listeners: {
+        stdout: (buffer: Buffer) => (version = buffer.toString().trim())
+      }
+    });
+    logIfDebug(`Using Vale ${version.split(' ').slice(-1)[0]}`);
+  }
 
   // `sync` re-downloads every package each time it runs, so a user who has
   // restored their `StylesPath` from a cache needs a way to say so.
