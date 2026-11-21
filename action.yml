@@ -2,7 +2,7 @@ name: Vale Linter
 description: The official GitHub Action for Vale -- install, manage, and run Vale with ease.
 author: jdkato
 branding:
-  icon: check
+  icon: edit-3
   color: green
 
 inputs:
