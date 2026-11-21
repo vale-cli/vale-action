@@ -6,7 +6,8 @@
     "scripts": {
         "build": "ncc build src/main.ts -o dist --minify",
         "format": "prettier --write src/*.ts",
-        "lint": "tsc --noEmit"
+        "lint": "tsc --noEmit",
+        "test": "tsc -p tsconfig.test.json && node --test \"lib/test/*.test.js\""
     },
     "repository": {
         "type": "git",
